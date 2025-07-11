@@ -4,23 +4,29 @@
   "service": "fastapi",
   "workspaceFolder": "/workspace",
   "shutdownAction": "stopCompose",
+  "mounts": [
+    "source=${localWorkspaceFolder}/.git,target=/workspace/.git,type=bind,consistency=cached"
+  ],
   "customizations": {
     "vscode": {
       "extensions": [
         "ms-python.python",
         "ms-azuretools.vscode-docker",
         "esbenp.prettier-vscode",
-        "ms-python.autopep8"
+        "ms-python.autopep8",
+        "eamodio.gitlens"
       ],
       "settings": {
         "python.pythonPath": "/usr/local/bin/python",
         "python.linting.enabled": true,
         "python.linting.pylintEnabled": false,
         "python.linting.flake8Enabled": true,
-        "python.formatting.provider": "autopep8"
+        "python.formatting.provider": "autopep8",
+        "git.enabled": true,
+        "git.path": "/usr/bin/git"
       }
     }
   },
-  "postCreateCommand": "pip install -r requirements.txt",
+  "postCreateCommand": "chmod +x .devcontainer/setup.sh && .devcontainer/setup.sh",
   "remoteUser": "root"
 }

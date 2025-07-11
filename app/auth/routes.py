@@ -11,6 +11,8 @@ from app.db import get_async_session
 
 from .utils import create_access_token, decode_access_token
 
+from .dependencies import AccessTokenBearer, RefreshTokenBearer
+
 RERESH_TOKEN_EXPIRY_DAYS = 7  # Default expiry for refresh tokens in days
 
 # Set up logging
@@ -113,3 +115,59 @@ async def login_user(
     except ValueError as e:
         logger.warning(f"Login failed for username {login_data.username}: {str(e)}")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
+
+@auth_router.get("/refresh-token", status_code=status.HTTP_200_OK)
+async def get_refresh_token(
+    user_token: str = Depends(RefreshTokenBearer()),
+    auth_service: AuthService = Depends(get_auth_service)
+) -> JSONResponse:
+    """
+    Refresh the access token using a valid refresh token.
+    This endpoint allows users to obtain a new access token using their refresh token.
+    """
+    logger.info("Refresh token endpoint hit")
+
+    # user_token is already decoded by RefreshTokenBearer
+    expiry_date = user_token.get("exp") if isinstance(user_token, dict) else None
+    if not expiry_date:
+        logger.error("Invalid refresh token: No expiry date found")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid refresh token"
+        )
+    if datetime.fromtimestamp(expiry_date) < datetime.now():
+        logger.error("Refresh token has expired")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Refresh token has expired"
+        )
+    logger.info("Refresh token is valid, creating new access token")
+    try:
+        # user_token is already the decoded token data from RefreshTokenBearer
+        user_id = user_token.get("user", {}).get("uid")
+        
+        if not user_id:
+            logger.error("Invalid refresh token: No user ID found")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Invalid refresh token"
+            )
+
+        # Create a new access token
+        new_access_token = create_access_token(
+            user_data=user_token.get("user", {}),  # Use full user data from token
+            expiry=None,  # Use default expiry from config
+        )
+        
+        logger.info(f"New access token created for user ID: {user_id}")
+        
+        return JSONResponse(
+            content={
+                "message": "Access token refreshed successfully",
+                "access_token": new_access_token,
+            },
+            status_code=status.HTTP_200_OK,
+        )
+    except ValueError as e:
+        logger.error(f"Refresh token error: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))

@@ -3,7 +3,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.dependencies import AuthBearer
+from app.auth.dependencies import AccessTokenBearer, RefreshTokenBearer
 from app.db import get_async_session
 
 from .book_service import BookService
@@ -11,7 +11,8 @@ from .models import BookModel
 from .schemas import BookCreateSchema, BookSchema, BookUpdateSchema
 
 book_router = APIRouter()
-access_token_bearer = AuthBearer()
+access_token_bearer = AccessTokenBearer()
+refresh_token_bearer = RefreshTokenBearer()  # If you need refresh token validation
 
 def get_book_service(session: AsyncSession = Depends(get_async_session)) -> BookService:
     return BookService(session)

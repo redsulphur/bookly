@@ -6,7 +6,8 @@ services:
       context: .
       dockerfile: Dockerfile
     volumes:
-      - ..:/workspace
+      - ..:/workspace:cached
+      - /workspace/node_modules
     ports:
       - "8000:8000"
     environment:
