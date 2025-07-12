@@ -12,7 +12,7 @@ from app.db.redis import add_jti_to_blocklist, is_token_blocked
 
 from .utils import create_access_token, decode_access_token
 
-from .dependencies import AccessTokenBearer, RefreshTokenBearer
+from .dependencies import AccessTokenBearer, RefreshTokenBearer, get_current_user
 
 RERESH_TOKEN_EXPIRY_DAYS = 7  # Default expiry for refresh tokens in days
 
@@ -209,3 +209,12 @@ async def logout_user(user_token: str = Depends(AccessTokenBearer())):
         content={"message": "User logged out successfully"},
         status_code=status.HTTP_204_NO_CONTENT,
     )
+
+
+@auth_router.get("/me", response_model=UserSchema, status_code=status.HTTP_200_OK)
+async def get_loggedin_user(user: UserSchema = Depends(get_current_user)) -> UserSchema:
+    """
+    Get the current logged-in user.
+    This endpoint retrieves the user information based on the access token.
+    """
+    return user

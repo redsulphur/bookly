@@ -1,9 +1,12 @@
 from fastapi.security import HTTPBearer
-from fastapi import HTTPException, Request, status
+from fastapi import HTTPException, Request, status, Depends
 from fastapi.security.http import HTTPAuthorizationCredentials
 import jwt
 from .utils import decode_access_token
 from app.db.redis import is_token_blocked
+from app.auth.auth_service import AuthService
+from app.db import get_async_session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class AuthBearer(HTTPBearer):
@@ -76,3 +79,34 @@ class RefreshTokenBearer(AuthBearer):
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Please provide a valid refresh token, not an access token.",
             )
+
+
+def get_auth_service_dependency(session: AsyncSession = Depends(get_async_session)) -> AuthService:
+    """Factory function to create AuthService with proper dependency injection."""
+    return AuthService(session)
+
+
+async def get_current_user(
+    user_token: dict = Depends(AccessTokenBearer()),
+    auth_service: AuthService = Depends(get_auth_service_dependency),
+):
+    """
+    Dependency to get the current user from the access token.
+    This will decode the token and return the user data.
+    """
+
+    user_email = user_token.get("user", {}).get("email")
+    if not user_email:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token: User email not found in token",
+        )
+
+    user = await auth_service.get_user_by_email(user_email)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token: User not found",
+        )
+
+    return user
