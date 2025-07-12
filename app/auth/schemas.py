@@ -11,6 +11,12 @@ class UserCreateSchema(BaseModel):
     password: str = Field(
         ..., description="Password for the user account", min_length=8
     )
+    first_name: str | None = Field(
+        None, description="First name of the user", max_length=50
+    )
+    last_name: str | None = Field(
+        None, description="Last name of the user", max_length=50
+    )
 
     class Config:
         from_attributes = (
