@@ -7,6 +7,8 @@ from app.db.redis import is_token_blocked
 from app.auth.auth_service import AuthService
 from app.db import get_async_session
 from sqlalchemy.ext.asyncio import AsyncSession
+from .schemas import UserSchema
+from typing import List, Dict, Any
 
 
 class AuthBearer(HTTPBearer):
@@ -14,7 +16,7 @@ class AuthBearer(HTTPBearer):
     def __init__(self, auto_error: bool = True):
         super().__init__(auto_error=auto_error)
 
-    async def __call__(self, request: Request) -> dict:
+    async def __call__(self, request: Request) -> HTTPAuthorizationCredentials | None:
         credentials = await super().__call__(request)
 
         if credentials is None:
@@ -81,7 +83,9 @@ class RefreshTokenBearer(AuthBearer):
             )
 
 
-def get_auth_service_dependency(session: AsyncSession = Depends(get_async_session)) -> AuthService:
+def get_auth_service_dependency(
+    session: AsyncSession = Depends(get_async_session),
+) -> AuthService:
     """Factory function to create AuthService with proper dependency injection."""
     return AuthService(session)
 
@@ -89,7 +93,7 @@ def get_auth_service_dependency(session: AsyncSession = Depends(get_async_sessio
 async def get_current_user(
     user_token: dict = Depends(AccessTokenBearer()),
     auth_service: AuthService = Depends(get_auth_service_dependency),
-):
+) -> UserSchema:
     """
     Dependency to get the current user from the access token.
     This will decode the token and return the user data.
@@ -110,3 +114,18 @@ async def get_current_user(
         )
 
     return user
+
+
+class RoleChecker:
+    def __init__(self, required_roles: List[str]):
+        self.required_roles = required_roles
+
+    async def __call__(
+        self, current_user: UserSchema = Depends(get_current_user)
+    ) -> UserSchema:
+        if current_user.role not in self.required_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have permission to access this resource.",
+            )
+        return current_user

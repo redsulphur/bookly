@@ -17,7 +17,7 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"Warning: Database initialization failed: {e}")
         print("The application will start without database connectivity")
-    
+
     yield
     print("Shutting down...")
 
@@ -28,7 +28,7 @@ app = FastAPI(
     title="Bookly Bumbaklart API",
     description="A simple FastAPI application for book review service",
     version=version,
-    lifespan=lifespan,
+    # lifespan=lifespan,
 )
 
 app.include_router(book_router, prefix=f"/api/{version}/books")

@@ -12,7 +12,12 @@ from app.db.redis import add_jti_to_blocklist, is_token_blocked
 
 from .utils import create_access_token, decode_access_token
 
-from .dependencies import AccessTokenBearer, RefreshTokenBearer, get_current_user
+from .dependencies import (
+    AccessTokenBearer,
+    RefreshTokenBearer,
+    RoleChecker,
+    get_current_user,
+)
 
 RERESH_TOKEN_EXPIRY_DAYS = 7  # Default expiry for refresh tokens in days
 
@@ -21,6 +26,10 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 auth_router = APIRouter()
+
+# Create different role checkers for different access levels
+admin_only = RoleChecker(required_roles=["admin"])
+user_or_admin = RoleChecker(required_roles=["user", "admin"])
 
 
 def get_auth_service(session: AsyncSession = Depends(get_async_session)) -> AuthService:
@@ -96,6 +105,7 @@ async def login_user(
                 "uid": str(user.uid),
                 "username": user.username,
                 "email": user.email,
+                "role": user.role,
             },
             expiry=None,  # Use default expiry from config
         )
@@ -105,6 +115,7 @@ async def login_user(
                 "uid": str(user.uid),
                 "username": user.username,
                 "email": user.email,
+                "role": user.role,
             },
             expiry=timedelta(
                 days=RERESH_TOKEN_EXPIRY_DAYS
@@ -212,9 +223,20 @@ async def logout_user(user_token: str = Depends(AccessTokenBearer())):
 
 
 @auth_router.get("/me", response_model=UserSchema, status_code=status.HTTP_200_OK)
-async def get_loggedin_user(user: UserSchema = Depends(get_current_user)) -> UserSchema:
+async def get_loggedin_user(user: UserSchema = Depends(admin_only)) -> UserSchema:
     """
     Get the current logged-in user.
     This endpoint retrieves the user information based on the access token.
+    The user must have admin role to access this endpoint.
+    """
+    return user
+
+
+@auth_router.get("/profile", response_model=UserSchema, status_code=status.HTTP_200_OK)
+async def get_user_profile(user: UserSchema = Depends(get_current_user)) -> UserSchema:
+    """
+    Get the current logged-in user profile.
+    This endpoint retrieves the user information based on the access token.
+    Available to all authenticated users.
     """
     return user

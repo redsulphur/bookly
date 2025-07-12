@@ -16,7 +16,7 @@ class AuthService:
         # Check if user already exists
         if await self.user_exists(user_data.email):
             raise ValueError("User with this email already exists")
-        
+
         # Validate input
         if not user_data.email or not user_data.password:
             raise ValueError("Email and password are required")
@@ -24,12 +24,14 @@ class AuthService:
             raise ValueError("Email and password cannot be empty or whitespace")
         if len(user_data.password) < 8:
             raise ValueError("Password must be at least 8 characters long")
-        
+
         # Create user with hashed password
         user_dict = user_data.model_dump()
-        user_dict['password_hash'] = hash_password(user_dict.pop('password'))
-        
         new_user = UserModel(**user_dict)
+
+        new_user.password_hash = hash_password(user_data.password)
+        new_user.role = "user"
+
         self.session.add(new_user)
         await self.session.commit()
         await self.session.refresh(new_user)
@@ -40,7 +42,7 @@ class AuthService:
         user = await self.get_user_by_email(username)
         if not user:
             raise ValueError("Invalid username or password")
-        
+
         password_verified = verify_password(
             plain_password=password, hashed_password=user.password_hash
         )
