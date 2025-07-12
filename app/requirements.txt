@@ -25,3 +25,4 @@ websockets==15.0.1
 PyJWT==2.8.0
 alembic==1.13.2
 sqlalchemy[asyncio]==2.0.23
+redis[hiredis]>=4.0.0

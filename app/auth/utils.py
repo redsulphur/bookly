@@ -44,6 +44,8 @@ def create_access_token(user_data: dict, expiry: timedelta = None, refresh: bool
 def decode_access_token(token: str) -> dict:
     """
     Decode an access token to retrieve the payload.
+    Raises jwt.ExpiredSignatureError for expired tokens.
+    Raises jwt.InvalidTokenError for invalid tokens.
     """
     try:
         payload = jwt.decode(
@@ -54,7 +56,7 @@ def decode_access_token(token: str) -> dict:
         return payload
     except jwt.ExpiredSignatureError as e:
         logging.error(f"Token expired: {e}")
-        raise ValueError("Token has expired")
+        raise  # Re-raise the original exception
     except jwt.InvalidTokenError as e:
         logging.error(f"Invalid token: {e}")
-        raise ValueError("Invalid token")
+        raise  # Re-raise the original exception

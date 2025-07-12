@@ -11,7 +11,9 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: str  # No default - must be set in .env  
     JWT_ALGORITHM: str = "HS256"  # Algorithm for JWT encoding
     JWT_ACCESS_TOKEN_EXPIRE_SECONDS: int = 3600  # Token expiration time in seconds
-    
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: int = 6379
+        
     model_config = SettingsConfigDict(
         env_file="app/.env",  # Look for .env in the app folder
         env_file_encoding="utf-8",
