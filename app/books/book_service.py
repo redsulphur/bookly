@@ -3,10 +3,19 @@ from sqlmodel import select
 from .models import BookModel
 from .schemas import BookCreateSchema, BookUpdateSchema
 from datetime import datetime
+import uuid
+
 
 class BookService:
     def __init__(self, session: AsyncSession):
         self.session = session
+
+    def _validate_uuid(self, uuid_string: str) -> uuid.UUID:
+        """Validate and convert a string to UUID."""
+        try:
+            return uuid.UUID(uuid_string)
+        except (ValueError, TypeError):
+            raise ValueError(f"Invalid UUID format: {uuid_string}")
 
     async def get_all_books(self) -> list[BookModel]:
         """Retrieve all books."""
@@ -16,7 +25,10 @@ class BookService:
 
     async def get_book(self, book_uid: str) -> BookModel:
         """Retrieve a book by its UID."""
-        statement = select(BookModel).where(BookModel.uid == book_uid)
+        # Validate UUID format first
+        validated_uuid = self._validate_uuid(book_uid)
+
+        statement = select(BookModel).where(BookModel.uid == validated_uuid)
         result = await self.session.execute(statement)
         book = result.scalar_one_or_none()
         if not book:
@@ -31,9 +43,14 @@ class BookService:
         await self.session.refresh(new_book)
         return new_book
 
-    async def update_book(self, book_uid: str, book_update: BookUpdateSchema) -> BookModel:
+    async def update_book(
+        self, book_uid: str, book_update: BookUpdateSchema
+    ) -> BookModel:
         """Update a book by its UID."""
-        statement = select(BookModel).where(BookModel.uid == book_uid)
+        # Validate UUID format first
+        validated_uuid = self._validate_uuid(book_uid)
+
+        statement = select(BookModel).where(BookModel.uid == validated_uuid)
         result = await self.session.execute(statement)
         book_to_update = result.scalar_one_or_none()
         if not book_to_update:
@@ -51,7 +68,10 @@ class BookService:
 
     async def delete_book(self, book_uid: str) -> None:
         """Delete a book by its UID."""
-        statement = select(BookModel).where(BookModel.uid == book_uid)
+        # Validate UUID format first
+        validated_uuid = self._validate_uuid(book_uid)
+
+        statement = select(BookModel).where(BookModel.uid == validated_uuid)
         result = await self.session.execute(statement)
         book_to_delete = result.scalar_one_or_none()
         if not book_to_delete:

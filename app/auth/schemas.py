@@ -1,15 +1,16 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, Field
-from sqlmodel import Field
+from pydantic import BaseModel, Field, EmailStr, ConfigDict
 
 
 class UserCreateSchema(BaseModel):
-    username: str = Field(..., description="Username of the user", max_length=50)
-    email: str = Field(..., description="Email address of the user", max_length=100)
+    username: str = Field(
+        ..., description="Username of the user", min_length=3, max_length=50
+    )
+    email: EmailStr = Field(..., description="Email address of the user")
     password: str = Field(
-        ..., description="Password for the user account", min_length=8
+        ..., description="Password for the user account", min_length=8, max_length=128
     )
     first_name: str | None = Field(
         None, description="First name of the user", max_length=50
@@ -18,27 +19,20 @@ class UserCreateSchema(BaseModel):
         None, description="Last name of the user", max_length=50
     )
 
-    class Config:
-        from_attributes = (
-            True  # Allows compatibility with ORM models (formerly orm_mode)
-        )
-        json_encoders = {
-            str: lambda v: v  # Custom encoder for UUIDs or other types if needed
-        }
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserLoginSchema(BaseModel):
     username: str = Field(..., description="Username or email of the user")
     password: str = Field(..., description="Password for the user account")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserSchema(BaseModel):
     uid: uuid.UUID
     username: str
-    email: str
+    email: EmailStr
     # password_hash excluded for security - don't return it in API responses
     first_name: str | None = None
     last_name: str | None = None
@@ -47,10 +41,21 @@ class UserSchema(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = (
-            True  # Allows compatibility with ORM models (formerly orm_mode)
-        )
-        json_encoders = {
-            str: lambda v: v  # Custom encoder for UUIDs or other types if needed
-        }
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UserUpdateSchema(BaseModel):
+    """Schema for updating user information - all fields optional"""
+
+    username: str | None = Field(
+        None, min_length=3, max_length=50, description="Username of the user"
+    )
+    email: EmailStr | None = Field(None, description="Email address of the user")
+    first_name: str | None = Field(
+        None, max_length=50, description="First name of the user"
+    )
+    last_name: str | None = Field(
+        None, max_length=50, description="Last name of the user"
+    )
+
+    model_config = ConfigDict(from_attributes=True)
