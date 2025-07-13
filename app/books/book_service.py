@@ -1,9 +1,11 @@
+import uuid
+from datetime import datetime
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
+
 from .models import BookModel
 from .schemas import BookCreateSchema, BookUpdateSchema
-from datetime import datetime
-import uuid
 
 
 class BookService:

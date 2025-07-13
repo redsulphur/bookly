@@ -7,9 +7,9 @@ from app.config import config
 
 # Use async engine for PostgreSQL
 engine = create_async_engine(
-    url=config.DATABASE_URL,
-    echo=True  # Set to True to see SQL queries in the console
+    url=config.DATABASE_URL, echo=True  # Set to True to see SQL queries in the console
 )
+
 
 async def init_db() -> None:
     """
@@ -20,7 +20,7 @@ async def init_db() -> None:
         # Create all tables
         async with engine.begin() as conn:
             await conn.run_sync(SQLModel.metadata.create_all)
-            
+
             # Test database connection
             statement = text("SELECT 'hello from database';")
             result = await conn.execute(statement)
@@ -30,8 +30,9 @@ async def init_db() -> None:
         print(f"❌ Database connection failed: {e}")
         print("⚠️  The app will continue without database connectivity")
         print("💡 To fix this, ensure PostgreSQL is running on localhost:5432")
-    
+
     return engine
+
 
 async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
     """

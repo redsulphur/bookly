@@ -10,14 +10,13 @@ from app.auth.schemas import UserCreateSchema, UserLoginSchema, UserSchema
 from app.db import get_async_session
 from app.db.redis import add_jti_to_blocklist, is_token_blocked
 
-from .utils import create_access_token, decode_access_token
-
 from .dependencies import (
     AccessTokenBearer,
     RefreshTokenBearer,
     RoleChecker,
     get_current_user,
 )
+from .utils import create_access_token, decode_access_token
 
 RERESH_TOKEN_EXPIRY_DAYS = 7  # Default expiry for refresh tokens in days
 

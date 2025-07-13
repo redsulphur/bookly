@@ -10,11 +10,13 @@ from app.config import config
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+
 def hash_password(password: str) -> str:
     """
     Hash a password using bcrypt.
     """
     return pwd_context.hash(password)
+
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
@@ -22,14 +24,21 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
     return pwd_context.verify(plain_password, hashed_password)
 
-def create_access_token(user_data: dict, expiry: timedelta = None, refresh: bool = False) -> str:
+
+def create_access_token(
+    user_data: dict, expiry: timedelta = None, refresh: bool = False
+) -> str:
     """
     Create an access token for user authentication.
     """
     payload = {}
 
     payload["user"] = user_data
-    payload["exp"] = datetime.now() + expiry if expiry is not None else datetime.now() + timedelta(seconds=config.JWT_ACCESS_TOKEN_EXPIRE_SECONDS)
+    payload["exp"] = (
+        datetime.now() + expiry
+        if expiry is not None
+        else datetime.now() + timedelta(seconds=config.JWT_ACCESS_TOKEN_EXPIRE_SECONDS)
+    )
     payload["jti"] = str(uuid.uuid4())  # JWT ID for unique identification of the token
     payload["refresh"] = refresh  # Indicate if this is a refresh token
 
@@ -40,6 +49,7 @@ def create_access_token(user_data: dict, expiry: timedelta = None, refresh: bool
     )
 
     return token
+
 
 def decode_access_token(token: str) -> dict:
     """

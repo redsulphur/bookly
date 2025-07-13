@@ -1,4 +1,5 @@
 import redis.asyncio as redis
+
 from app.config import config
 
 jti_blocklist = redis.Redis(

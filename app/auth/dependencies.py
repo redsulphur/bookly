@@ -1,14 +1,18 @@
-from fastapi.security import HTTPBearer
-from fastapi import HTTPException, Request, status, Depends
-from fastapi.security.http import HTTPAuthorizationCredentials
+from typing import Any, Dict, List
+
 import jwt
-from .utils import decode_access_token
-from app.db.redis import is_token_blocked
+from fastapi import Depends, HTTPException, Request, status
+from fastapi.security import HTTPBearer
+from fastapi.security.http import HTTPAuthorizationCredentials
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.auth.auth_service import AuthService
 from app.db import get_async_session
-from sqlalchemy.ext.asyncio import AsyncSession
+from app.db.redis import is_token_blocked
+from app.exceptions import InvalidTokenException
+
 from .schemas import UserSchema
-from typing import List, Dict, Any
+from .utils import decode_access_token
 
 
 class AuthBearer(HTTPBearer):
@@ -31,10 +35,7 @@ class AuthBearer(HTTPBearer):
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has expired"
             )
         except jwt.InvalidTokenError:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid or expired token",
-            )
+            raise InvalidTokenException
 
         if token_data is None:
             raise HTTPException(
