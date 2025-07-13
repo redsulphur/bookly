@@ -10,6 +10,8 @@ from .book_service import BookService
 from .models import BookModel
 from .schemas import BookCreateSchema, BookSchema, BookUpdateSchema
 
+from app.exceptions import BookNotFoundException, InvalidUuid
+
 book_router = APIRouter()
 access_token_bearer = AccessTokenBearer()
 refresh_token_bearer = RefreshTokenBearer()
@@ -57,11 +59,10 @@ async def get_single_book(
     book_service: BookService = Depends(get_book_service),
 ) -> BookModel:
     """Retrieve a book by its UID."""
-    try:
-        book = await book_service.get_book(book_uid)
-        return book
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    # Both InvalidUuid (HTTP 400) and BookNotFoundException (HTTP 404)
+    # will be handled by global exception handlers
+    book = await book_service.get_book(book_uid)
+    return book
 
 
 @book_router.post(
@@ -73,7 +74,7 @@ async def get_single_book(
 async def create_book(
     book_data: BookCreateSchema,
     book_service: BookService = Depends(get_book_service),
-) -> BookModel:
+) -> BookSchema:
     """Create a new book."""
     try:
         new_book = await book_service.create_book(book_data)
@@ -92,15 +93,12 @@ async def update_book(
     book_uid: str,
     book_update: BookUpdateSchema,
     book_service: BookService = Depends(get_book_service),
-) -> BookModel:
+) -> BookSchema:
     """Update a book by its UID."""
-    try:
-        updated_book = await book_service.update_book(book_uid, book_update)
-        return updated_book
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    # InvalidUuid (HTTP 400) and BookNotFoundException (HTTP 404)
+    # will be handled by global exception handlers
+    updated_book = await book_service.update_book(book_uid, book_update)
+    return updated_book
 
 
 @book_router.delete(
@@ -114,10 +112,7 @@ async def delete_book(
     user_token: str = Depends(access_token_bearer),
 ):
     """Delete a book by its UID."""
-    try:
-        await book_service.delete_book(book_uid)
-        return {}
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    # InvalidUuid (HTTP 400) and BookNotFoundException (HTTP 404)
+    # will be handled by global exception handlers
+    await book_service.delete_book(book_uid)
+    return {}

@@ -1,9 +1,11 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, status
 
 from .auth.routes import auth_router
 from .books.routes import book_router
+
+from .exceptions import register_all_exceptions
 
 
 @asynccontextmanager
@@ -30,6 +32,9 @@ app = FastAPI(
     version=version,
     # lifespan=lifespan,
 )
+
+register_all_exceptions(app)
+
 
 app.include_router(book_router, prefix=f"/api/{version}/books")
 app.include_router(auth_router, prefix=f"/api/{version}/auth")

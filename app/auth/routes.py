@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.auth_service import AuthService
 from app.auth.schemas import UserCreateSchema, UserLoginSchema, UserSchema
 from app.db import get_async_session
-from app.db.redis import add_jti_to_blocklist, is_token_blocked
+from app.db.redis import add_jti_to_blocklist
 
 from .dependencies import (
     AccessTokenBearer,
@@ -17,6 +17,15 @@ from .dependencies import (
     get_current_user,
 )
 from .utils import create_access_token, decode_access_token
+
+from app.exceptions import (
+    UserAlreadyExistsException,
+    UserNotFoundException,
+    InvalidCredentialsException,
+    RefreshTokenRequiredException,
+    AccessTokenRequiredException,
+    TokenRevokedException,
+)
 
 RERESH_TOKEN_EXPIRY_DAYS = 7  # Default expiry for refresh tokens in days
 
@@ -51,10 +60,7 @@ async def register_user_account(
     try:
         if not user_data.email or not user_data.password:
             logger.warning("Registration failed: Missing email or password")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email and password are required",
-            )
+            raise InvalidCredentialsException
 
         # Check if the user already exists
         user_exists = await auth_service.user_exists(user_data.email)
@@ -62,10 +68,8 @@ async def register_user_account(
             logger.warning(
                 f"Registration failed: User already exists for email: {user_data.email}"
             )
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="User with this email already exists",
-            )
+            raise UserAlreadyExistsException
+
     except Exception as e:
         logger.error(f"Registration validation error: {str(e)}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -90,13 +94,16 @@ async def login_user(
 
     if not login_data.username or not login_data.password:
         logger.warning("Login failed: Missing username or password")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username and password are required",
-        )
-
+        raise InvalidCredentialsException
     try:
         user = await auth_service.login_user(login_data.username, login_data.password)
+
+        if not user:
+            logger.warning(
+                f"Login failed for username {login_data.username}: Invalid credentials"
+            )
+            raise UserNotFoundException
+
         logger.info(f"Login successful for user: {user.email}")
 
         access_token = create_access_token(
@@ -135,7 +142,7 @@ async def login_user(
         )
     except ValueError as e:
         logger.warning(f"Login failed for username {login_data.username}: {str(e)}")
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
+        raise InvalidCredentialsException
 
 
 @auth_router.get("/refresh-token", status_code=status.HTTP_200_OK)
@@ -153,14 +160,12 @@ async def get_refresh_token(
     expiry_date = user_token.get("exp") if isinstance(user_token, dict) else None
     if not expiry_date:
         logger.error("Invalid refresh token: No expiry date found")
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Invalid refresh token"
-        )
+        raise RefreshTokenRequiredException
+
     if datetime.fromtimestamp(expiry_date) < datetime.now():
         logger.error("Refresh token has expired")
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Refresh token has expired"
-        )
+        raise RefreshTokenRequiredException
+
     logger.info("Refresh token is valid, creating new access token")
     try:
         # user_token is already the decoded token data from RefreshTokenBearer
@@ -168,9 +173,7 @@ async def get_refresh_token(
 
         if not user_id:
             logger.error("Invalid refresh token: No user ID found")
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail="Invalid refresh token"
-            )
+            raise RefreshTokenRequiredException
 
         # Create a new access token
         new_access_token = create_access_token(
@@ -189,7 +192,7 @@ async def get_refresh_token(
         )
     except ValueError as e:
         logger.error(f"Refresh token error: {str(e)}")
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        raise RefreshTokenRequiredException
 
 
 @auth_router.get("/logout", status_code=status.HTTP_204_NO_CONTENT)
@@ -204,9 +207,7 @@ async def logout_user(user_token: str = Depends(AccessTokenBearer())):
     jti = user_token.get("jti")
     if not jti:
         logger.error("Invalid access token: No JWT ID found")
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Invalid access token"
-        )
+        raise AccessTokenRequiredException
 
     # Here you would typically add the JTI to a blocklist in Redis or another store
     # For simplicity, we are just logging it

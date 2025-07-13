@@ -6,6 +6,7 @@ import jwt
 from passlib.context import CryptContext
 
 from app.config import config
+from app.utils import generate_uuid
 
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -39,7 +40,9 @@ def create_access_token(
         if expiry is not None
         else datetime.now() + timedelta(seconds=config.JWT_ACCESS_TOKEN_EXPIRE_SECONDS)
     )
-    payload["jti"] = str(uuid.uuid4())  # JWT ID for unique identification of the token
+    payload["jti"] = str(
+        generate_uuid()
+    )  # JWT ID for unique identification of the token
     payload["refresh"] = refresh  # Indicate if this is a refresh token
 
     token = jwt.encode(

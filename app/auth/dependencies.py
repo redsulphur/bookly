@@ -8,8 +8,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.auth_service import AuthService
 from app.db import get_async_session
-from app.db.redis import is_token_blocked
-from app.exceptions import InvalidTokenException
+from app.db.redis import is_token_revoked
+from app.exceptions import (
+    InvalidTokenException,
+    TokenRevokedException,
+    TokenExpiredException,
+    AccessTokenRequiredException,
+    RefreshTokenRequiredException,
+    UserNotFoundException,
+    RoleNotAuthorizedException,
+)
 
 from .schemas import UserSchema
 from .utils import decode_access_token
@@ -31,29 +39,15 @@ class AuthBearer(HTTPBearer):
         try:
             token_data = decode_access_token(token)
         except jwt.ExpiredSignatureError:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has expired"
-            )
+            raise TokenExpiredException
         except jwt.InvalidTokenError:
             raise InvalidTokenException
 
         if token_data is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Token is invalid or expired",
-                    "resolution": "Get a new token by logging in again.",
-                },
-            )
+            raise InvalidTokenException
 
-        if await is_token_blocked(token_data.get("jti")):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "message": "Token has been revoked",
-                    "resolution": "Get a new token by logging in again.",
-                },
-            )
+        if await is_token_revoked(token_data.get("jti")):
+            raise TokenRevokedException
 
         self.verify_token(token_data)
         return token_data
@@ -63,25 +57,19 @@ class AuthBearer(HTTPBearer):
 
 
 class AccessTokenBearer(AuthBearer):
-
+    # implementation for access token verification
     def verify_token(self, token_data: dict) -> None:
         """Verify that this is an access token (refresh=False)"""
         if token_data and token_data.get("refresh", False):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Please provide a valid access token, not a refresh token.",
-            )
+            raise AccessTokenRequiredException
 
 
 class RefreshTokenBearer(AuthBearer):
-
+    # implementation for refresh token verification
     def verify_token(self, token_data: dict) -> None:
         """Verify that this is a refresh token (refresh=True)"""
         if token_data and not token_data.get("refresh", False):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Please provide a valid refresh token, not an access token.",
-            )
+            raise RefreshTokenRequiredException
 
 
 def get_auth_service_dependency(
@@ -109,10 +97,7 @@ async def get_current_user(
 
     user = await auth_service.get_user_by_email(user_email)
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token: User not found",
-        )
+        raise UserNotFoundException
 
     return user
 
@@ -125,8 +110,5 @@ class RoleChecker:
         self, current_user: UserSchema = Depends(get_current_user)
     ) -> UserSchema:
         if current_user.role not in self.required_roles:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You do not have permission to access this resource.",
-            )
+            raise RoleNotAuthorizedException
         return current_user

@@ -17,6 +17,13 @@ async def add_jti_to_blocklist(jti: str) -> None:
     )
 
 
-async def is_token_blocked(jti: str) -> bool:
+async def is_token_revoked(jti: str) -> bool:
     """Check if a jti is in the blocklist."""
-    return await jti_blocklist.exists(jti) > 0
+    if not config.ENABLE_REDIS_BLOCKLIST:
+        return False  # Skip Redis check if disabled
+
+    try:
+        return await jti_blocklist.exists(jti) > 0
+    except Exception as e:
+        print(f"Redis connection failed: {e}")
+        return False  # Allow access if Redis is down (development only)

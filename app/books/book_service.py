@@ -1,9 +1,10 @@
-import uuid
 from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
+from app.utils import validate_uuid
+from app.exceptions import BookNotFoundException
 from .models import BookModel
 from .schemas import BookCreateSchema, BookUpdateSchema
 
@@ -11,13 +12,6 @@ from .schemas import BookCreateSchema, BookUpdateSchema
 class BookService:
     def __init__(self, session: AsyncSession):
         self.session = session
-
-    def _validate_uuid(self, uuid_string: str) -> uuid.UUID:
-        """Validate and convert a string to UUID."""
-        try:
-            return uuid.UUID(uuid_string)
-        except (ValueError, TypeError):
-            raise ValueError(f"Invalid UUID format: {uuid_string}")
 
     async def get_all_books(self) -> list[BookModel]:
         """Retrieve all books."""
@@ -28,13 +22,13 @@ class BookService:
     async def get_book(self, book_uid: str) -> BookModel:
         """Retrieve a book by its UID."""
         # Validate UUID format first
-        validated_uuid = self._validate_uuid(book_uid)
+        validated_uuid = validate_uuid(book_uid)
 
         statement = select(BookModel).where(BookModel.uid == validated_uuid)
         result = await self.session.execute(statement)
         book = result.scalar_one_or_none()
         if not book:
-            raise ValueError("Book not found")
+            raise BookNotFoundException
         return book
 
     async def create_book(self, book_data: BookCreateSchema) -> BookModel:
@@ -50,13 +44,13 @@ class BookService:
     ) -> BookModel:
         """Update a book by its UID."""
         # Validate UUID format first
-        validated_uuid = self._validate_uuid(book_uid)
+        validated_uuid = validate_uuid(book_uid)
 
         statement = select(BookModel).where(BookModel.uid == validated_uuid)
         result = await self.session.execute(statement)
         book_to_update = result.scalar_one_or_none()
         if not book_to_update:
-            raise ValueError("Book not found")
+            raise BookNotFoundException
 
         # Update the book attributes with the provided data
         update_data_dict = book_update.model_dump(exclude_unset=True)
@@ -71,13 +65,13 @@ class BookService:
     async def delete_book(self, book_uid: str) -> None:
         """Delete a book by its UID."""
         # Validate UUID format first
-        validated_uuid = self._validate_uuid(book_uid)
+        validated_uuid = validate_uuid(book_uid)
 
         statement = select(BookModel).where(BookModel.uid == validated_uuid)
         result = await self.session.execute(statement)
         book_to_delete = result.scalar_one_or_none()
         if not book_to_delete:
-            raise ValueError("Book not found")
+            raise BookNotFoundException
 
         await self.session.delete(book_to_delete)
         await self.session.commit()
