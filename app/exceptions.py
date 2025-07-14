@@ -1,7 +1,8 @@
-from fastapi import FastAPI, status
-from fastapi.responses import JSONResponse
-from fastapi.requests import Request
 from typing import Any, Callable, List
+
+from fastapi import FastAPI, status
+from fastapi.requests import Request
+from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
 
@@ -87,14 +88,6 @@ class UserNotFoundException(BooklyException):
     pass
 
 
-class InvalidCredentialsException(BooklyException):
-    """Exception raised for invalid login credentials."""
-
-    # def __init__(self):
-    #     super().__init__("Invalid username or password.")
-    pass
-
-
 class BookNotFoundException(BooklyException):
     """Exception raised when a book is not found."""
 
@@ -154,7 +147,7 @@ def create_dynamic_uuid_exception_response() -> (
     return exception_handler
 
 
-def register_all_exceptions(app: FastAPI):
+def register_all_exceptions(app: FastAPI) -> None:
     """Register all custom exception handlers with the FastAPI app."""
     app.add_exception_handler(
         InvalidTokenException,

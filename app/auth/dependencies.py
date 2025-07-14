@@ -10,13 +10,13 @@ from app.auth.auth_service import AuthService
 from app.db import get_async_session
 from app.db.redis import is_token_revoked
 from app.exceptions import (
-    InvalidTokenException,
-    TokenRevokedException,
-    TokenExpiredException,
     AccessTokenRequiredException,
+    InvalidTokenException,
     RefreshTokenRequiredException,
-    UserNotFoundException,
     RoleNotAuthorizedException,
+    TokenExpiredException,
+    TokenRevokedException,
+    UserNotFoundException,
 )
 
 from .schemas import UserSchema
@@ -90,10 +90,7 @@ async def get_current_user(
 
     user_email = user_token.get("user", {}).get("email")
     if not user_email:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token: User email not found in token",
-        )
+        raise InvalidTokenException
 
     user = await auth_service.get_user_by_email(user_email)
     if not user:
