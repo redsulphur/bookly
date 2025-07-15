@@ -21,10 +21,10 @@ async def init_db() -> None:
         async with engine.begin() as conn:
             await conn.run_sync(SQLModel.metadata.create_all)
 
-            # Test database connection
-            statement = text("SELECT 'hello from database';")
-            result = await conn.execute(statement)
-            print(result.all())
+            # # Test database connection
+            # statement = text("SELECT 'hello from database';")
+            # result = await conn.execute(statement)
+            # print(result.all())
         print("✅ Database connection successful")
     except Exception as e:
         print(f"❌ Database connection failed: {e}")

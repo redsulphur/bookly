@@ -26,10 +26,22 @@ async def lifespan(app: FastAPI):
 
 version = "v1"
 
+tags_metadata = [
+    {
+        "name": "Books",
+        "description": "Operations with books. Manage your book collection.",
+    },
+    {
+        "name": "Authentication",
+        "description": "User authentication and authorization operations.",
+    },
+]
+
 app = FastAPI(
     title="Bookly Bumbaklart API",
     description="A simple FastAPI application for book review service",
     version=version,
+    openapi_tags=tags_metadata,
     # lifespan=lifespan,
 )
 
@@ -38,5 +50,5 @@ register_all_exceptions(app)
 register_middleware(app)
 
 
-app.include_router(book_router, prefix=f"/api/{version}/books")
-app.include_router(auth_router, prefix=f"/api/{version}/auth")
+app.include_router(book_router, prefix=f"/api/{version}/books", tags=["Books"])
+app.include_router(auth_router, prefix=f"/api/{version}/auth", tags=["Authentication"])

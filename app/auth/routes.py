@@ -9,6 +9,14 @@ from app.auth.auth_service import AuthService
 from app.auth.schemas import UserCreateSchema, UserLoginSchema, UserSchema
 from app.db import get_async_session
 from app.db.redis import add_jti_to_blocklist
+from app.exceptions import (
+    AccessTokenRequiredException,
+    InvalidCredentialsException,
+    RefreshTokenRequiredException,
+    TokenRevokedException,
+    UserAlreadyExistsException,
+    UserNotFoundException,
+)
 
 from .dependencies import (
     AccessTokenBearer,
@@ -18,22 +26,16 @@ from .dependencies import (
 )
 from .utils import create_access_token, decode_access_token
 
-from app.exceptions import (
-    UserAlreadyExistsException,
-    UserNotFoundException,
-    InvalidCredentialsException,
-    RefreshTokenRequiredException,
-    AccessTokenRequiredException,
-    TokenRevokedException,
-)
-
 RERESH_TOKEN_EXPIRY_DAYS = 7  # Default expiry for refresh tokens in days
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-auth_router = APIRouter()
+auth_router = APIRouter(
+    tags=["Authentication"],
+    responses={401: {"description": "Unauthorized"}},
+)
 
 # Create different role checkers for different access levels
 admin_only = RoleChecker(required_roles=["admin"])

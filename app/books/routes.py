@@ -5,14 +5,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import AccessTokenBearer, RefreshTokenBearer, RoleChecker
 from app.db import get_async_session
+from app.exceptions import BookNotFoundException, InvalidUuid
 
 from .book_service import BookService
 from .models import BookModel
 from .schemas import BookCreateSchema, BookSchema, BookUpdateSchema
 
-from app.exceptions import BookNotFoundException, InvalidUuid
-
-book_router = APIRouter()
+book_router = APIRouter(
+    tags=["Books"],
+    responses={404: {"description": "Not found"}},
+)
 access_token_bearer = AccessTokenBearer()
 refresh_token_bearer = RefreshTokenBearer()
 role_checker = Depends(RoleChecker(required_roles=["user", "admin"]))
