@@ -19,6 +19,7 @@ from app.exceptions import (
     UserNotFoundException,
 )
 
+from .models import UserModel
 from .schemas import UserSchema
 from .utils import decode_access_token
 
@@ -28,7 +29,7 @@ class AuthBearer(HTTPBearer):
     def __init__(self, auto_error: bool = True):
         super().__init__(auto_error=auto_error)
 
-    async def __call__(self, request: Request) -> HTTPAuthorizationCredentials | None:
+    async def __call__(self, request: Request) -> dict | None:
         credentials = await super().__call__(request)
 
         if credentials is None:
@@ -82,7 +83,7 @@ def get_auth_service_dependency(
 async def get_current_user(
     user_token: dict = Depends(AccessTokenBearer()),
     auth_service: AuthService = Depends(get_auth_service_dependency),
-) -> UserSchema:
+) -> UserModel:
     """
     Dependency to get the current user from the access token.
     This will decode the token and return the user data.
